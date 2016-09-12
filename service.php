@@ -251,7 +251,7 @@ OUT;
         }
         else {
             header("Content-Type: text/javascript");
-            $this->handlerScriptReuqest();
+            echo $this->handlerScriptReuqest();
         }
     }
 
