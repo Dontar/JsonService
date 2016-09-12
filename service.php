@@ -37,13 +37,10 @@ class JsonService {
 
         }
 
-        header("Content-Type: application/json");
-        echo $isMulty?json_encode($response):json_encode($response[0]);
-
+        return $isMulty?json_encode($response):json_encode($response[0]);
     }
 
     private function handlerScriptReuqest() {
-        header("Content-Type: text/javascript");
         $script = "";
         $dir = scandir($this->servicesPath);
         foreach ( $dir as $file ) {
@@ -77,8 +74,7 @@ class JsonService {
                 }
             }
         }
-        echo $this->generateJs();
-        echo $script;
+        return $this->generateJs().$script;
     }
 
     private function generateJs() {
@@ -250,9 +246,11 @@ OUT;
 
     public function dispatch() {
         if ($_SERVER['REQUEST_METHOD'] == "POST") {
-            $this->handlerServiceRequest();
+            header("Content-Type: application/json");
+            echo $this->handlerServiceRequest();
         }
         else {
+            header("Content-Type: text/javascript");
             $this->handlerScriptReuqest();
         }
     }
