@@ -30,6 +30,7 @@ class JsonService {
                     "id" => $calls['id'],
                     "error" => array (
                         "message" => $e->getMessage(),
+						"code" => $e->getCode(),
                         "trace" => $e->getTrace()
                     )
                 );
