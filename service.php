@@ -65,7 +65,7 @@ class JsonService {
 							/** @var ReflectionMethod $method */
 							if ($method->getName() == "__construct") continue;
 							$m = $method->getName();
-							$ms[] = "\t$m: function() {var params = Array.prototype.slice.call(arguments), cb = params.pop();srvc.queRequest(\"$service\", \"$m\", params, cb);}";
+							$ms[] = "\t$m: srvc.queRequest.bind(srvc, \"$service\", \"$m\")";
 						}
 						if (count($ms) > 0) {
 							$ms = implode(",\n", $ms);
@@ -229,8 +229,14 @@ var srvc = {
 			xhr.send(JSON.stringify(Object.keys(q).map(function (item) { return q[item].data; })));
 		}
 	},
-	queRequest: function (service, method, params, cb) {
-		var id = this.i++;
+	queRequest: function () {
+		var
+			params = Array.prototype.slice.call(arguments),
+			service = params.shift(),
+			method = params.shift(),
+			cb = params.pop(),
+			id = this.i++;
+
 		this.q[id] = {
 			id: id,
 			data: {
