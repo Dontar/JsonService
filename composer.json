@@ -1,0 +1,13 @@
+{
+    "name": "dontar/json-service",
+    "description": "JSON RPC",
+    "type": "library",
+    "version": "1.0.0",
+    "authors": [
+        {
+            "name": "Kaloyan Arsov",
+            "email": "kaloyan.arsov@gmail.com"
+        }
+    ],
+    "require": {}
+}
