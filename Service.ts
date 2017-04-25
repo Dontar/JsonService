@@ -32,8 +32,8 @@ class Service {
 			var q = this.q;
 			this.q = {};
 
-			this.sendRequests(JSON.stringify(Object.keys(q).map(function (item) { return q[item].data; }))).then((content) => {
-				content.forEach(function (item) {
+			this.sendRequests(JSON.stringify(Object.keys(q).map(item => q[item].data))).then(content => {
+				content.forEach(item => {
 					var t = q[item.id];
 					if (item.error) {
 						t.cb(undefined, item.error);
@@ -41,8 +41,8 @@ class Service {
 						t.cb(item.result);
 					}
 				});
-			}).catch((error) => {
-				Object.keys(q).forEach(function (t) {
+			}, error => {
+				Object.keys(q).forEach(t => {
 					q[t].cb(undefined, error);
 				});
 			});

@@ -18,7 +18,7 @@ var Service = (function () {
                         t.cb(item.result);
                     }
                 });
-            }).catch(function (error) {
+            }, function (error) {
                 Object.keys(q).forEach(function (t) {
                     q[t].cb(undefined, error);
                 });
