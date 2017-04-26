@@ -31,22 +31,27 @@ var Service = (function () {
             xhr.open("POST", _requestUri, true);
             xhr.setRequestHeader("Content-type", "application/json");
             xhr.onreadystatechange = function () {
-                if (xhr.readyState == 4) {
-                    if (xhr.status == 200) {
-                        var content;
-                        if (xhr.responseType == "json") {
-                            content = xhr.response;
+                try {
+                    if (xhr.readyState == 4) {
+                        if (xhr.status == 200) {
+                            var content;
+                            if (xhr.responseType == "json") {
+                                content = xhr.response;
+                            }
+                            else {
+                                content = JSON.parse(xhr.responseText);
+                            }
+                            resolve(content);
                         }
                         else {
-                            content = JSON.parse(xhr.responseText);
+                            reject({
+                                message: xhr.responseText
+                            });
                         }
-                        resolve(content);
                     }
-                    else {
-                        reject({
-                            message: xhr.responseText
-                        });
-                    }
+                }
+                catch (e) {
+                    reject(e);
                 }
             };
             xhr.send(data);
