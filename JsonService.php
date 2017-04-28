@@ -20,7 +20,7 @@ class JsonService {
 
 		foreach ( $input as $calls ) {
 			try {
-				require_once $this->servicesPath . DIRECTORY_SEPARATOR . $calls['service'] . ".php";
+				// require_once $this->servicesPath . DIRECTORY_SEPARATOR . $calls['service'] . ".php";
 				$self = new $calls['service']();
 				$result = call_user_func_array(array ( $self, $calls['method'] ), $calls['arguments']);
 				$response[] = array ( "result" => $result, "id" => $calls['id'] );
@@ -50,13 +50,13 @@ class JsonService {
 				$exportSignature = file_get_contents($fullPath, false, null, -1, 30);
 				if (strpos($exportSignature, "@export") === false) continue;
 				$service = substr($file, 0, $p);
-				try {
-					require_once $fullPath;
-				}
-				catch ( Exception $e ) {
-					continue;
-				}
-				if (class_exists($service)) {
+				// try {
+				// 	require_once $fullPath;
+				// }
+				// catch ( Exception $e ) {
+				// 	continue;
+				// }
+				// if (class_exists($service)) {
 					try {
 						$class = new ReflectionClass($service);
 						$methods = $class->getMethods(ReflectionMethod::IS_PUBLIC);
@@ -75,7 +75,7 @@ class JsonService {
 					} catch ( Exception $e ) {
 						continue;
 					}
-				}
+				// }
 			}
 		}
 		return $this->generateJs().$script;
