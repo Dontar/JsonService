@@ -34,12 +34,12 @@ class Service
 		foreach (new \DirectoryIterator($this->servicesPath) as $fileInfo) {
 			if ($fileInfo->getExtension() == "php") {
 				$service = $fileInfo->getBasename(".php");
-				$out->fwrite("var $service = {");
+				$out->fwrite("var $service = {\n");
 
 				/** @var \ReflectionMethod $method */
 				foreach ((new \ReflectionClass($service))->getMethods(ReflectionMethod::IS_PUBLIC) as $method) {
 					if (strpos($method->getDocComment(), "@export") !== false) {
-						$out->fwrite(sprintf("\t%s: srvc.queRequest.bind(srvc, '%s', '%s')", $mn = $method->getName(), $service, $mn));
+						$out->fwrite(sprintf("\t%s: srvc.queRequest.bind(srvc, '%s', '%s'),\n", $mn = $method->getName(), $service, $mn));
 					}
 				}
 				$out->fwrite("};\n");
