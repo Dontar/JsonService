@@ -27,7 +27,8 @@ class Service
 	{
 		header("Content-Type: text/javascript");
 		$out = new \SplFileObject("php://output");
-
+		$out->fwrite("'use strict';");
+		$out->fwrite(sprintf("var _requestUri = '%s'", $_SERVER['REQUEST_URI']));
 		$out->fwrite($this->exportJs());
 
 		/** @var \DirectoryIterator $fileInfo*/
