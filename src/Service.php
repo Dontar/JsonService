@@ -60,7 +60,7 @@ class Service
 			/** @var Request $call */
 			try {
 				$self = new $call->{"service"}();
-				$result = call_user_func_array([$self, $call->action], $call->params);
+				$result = call_user_func_array([$self, $call->method], $call->arguments);
 				$response[] = (object)["result" => $result, "id" => $call->id];
 			} catch (Exception $e) {
 				$response[] = (object)[
