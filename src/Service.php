@@ -27,8 +27,8 @@ class Service
 	{
 		header("Content-Type: text/javascript");
 		$out = new \SplFileObject("php://output");
-		$out->fwrite("'use strict';");
-		$out->fwrite(sprintf("var _requestUri = '%s'", $_SERVER['REQUEST_URI']));
+		$out->fwrite("'use strict';\n");
+		$out->fwrite(sprintf("var _requestUri = '%s';\n", $_SERVER['REQUEST_URI']));
 		$out->fwrite($this->exportJs());
 
 		/** @var \DirectoryIterator $fileInfo*/
@@ -38,7 +38,7 @@ class Service
 				$out->fwrite("var $service = {\n");
 
 				/** @var \ReflectionMethod $method */
-				foreach ((new \ReflectionClass($service))->getMethods(ReflectionMethod::IS_PUBLIC) as $method) {
+				foreach ((new \ReflectionClass($service))->getMethods(\ReflectionMethod::IS_PUBLIC) as $method) {
 					if (strpos($method->getDocComment(), "@export") !== false) {
 						$out->fwrite(sprintf("\t%s: srvc.queRequest.bind(srvc, '%s', '%s'),\n", $mn = $method->getName(), $service, $mn));
 					}
