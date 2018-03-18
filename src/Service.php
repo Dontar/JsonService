@@ -51,10 +51,20 @@ class Service
 
 	private function handlerServiceRequest()
 	{
-
 		$request = json_decode(file_get_contents("php://input"));
-		$request = is_array($request) ? $request : [$request];
-
+		$request = is_object($request) ? [$request] : $request;
+		if ($post = empty($request)) {
+			$path = explode("/", trim($_SERVER['REQUEST_URI'], "/"));
+			$method = array_pop($path);
+			$service = array_pop($path);
+			parse_str($_SERVER['QUERY_STRING'], $arguments);
+			$request = [(object)[
+				"id" => -1,
+				"service" => $service,
+				"method" => $method,
+				"arguments" => array_values($arguments)
+			]];
+		}
 		$response = [];
 		foreach ($request as $call) {
 			/** @var Request $call */
@@ -73,7 +83,44 @@ class Service
 				];
 			}
 		}
-		$this->processResponses($response);
+		if ($post) {
+			$this->postResponce($response);
+		} else {
+			$this->processResponces($response);
+		}
+	}
+
+	private function postResponce($response)
+	{
+		header("Content-Type: application/json; charset=utf8");
+		$out = new \SplFileObject("php://output");
+
+		$data = $response[0]->result;
+
+		if ($data instanceof \Generator) {
+			try {
+				if ($data->valid()) {
+					$out->fwrite('[' . json_encode($data->current()));
+					$data->next();
+					while ($data->valid()) {
+						$out->fwrite(',' . json_encode($data->current()));
+						$data->next();
+					}
+					$out->fwrite(']');
+				}
+			} catch (\ErrorException $e) {
+				$out->fwrite(json_encode([
+					"error" => [
+						"message" => $e->getMessage(),
+						"code" => $e->getCode(),
+						"trace" => $e->getTrace()
+					]
+				]));
+			}
+		} else {
+			$out->fwrite(json_encode($data));
+		}
+
 	}
 
 	/**
@@ -82,33 +129,41 @@ class Service
 	 * @param Response[] $responses
 	 * @return void
 	 */
-	private function processResponses($responses)
+	private function processResponces($responses)
 	{
 		header("Content-Type: application/json; charset=utf8");
 		$out = new \SplFileObject("php://output");
 		$out->fwrite("[");
 
 		$last = count($responses) - 1;
-		foreach ($responses as $response) {
+		foreach ($responses as $key => $response) {
 			$data = $response->result;
 
 			if ($data instanceof \Generator) {
-				$out->fwrite('{"id":' . $response->id . ',"result":[');
-				if ($data->valid()) {
-					fwrite(json_encode($data->current()));
-					$data->next();
-					while ($data->valid()) {
-						$out->fwrite(',' . json_encode($data->current()));
+				try {
+					if ($data->valid()) {
+						$out->fwrite(sprintf('{"id": %s, "result": [', $response->id) . json_encode($data->current()));
 						$data->next();
+						while ($data->valid()) {
+							$out->fwrite(',' . json_encode($data->current()));
+							$data->next();
+						}
+						$out->fwrite(']}');
 					}
+				} catch (\ErrorException $e) {
+					$out->fwrite(json_encode([
+						"id" => $response->id,
+						"error" => [
+							"message" => $e->getMessage(),
+							"code" => $e->getCode(),
+							"trace" => $e->getTrace()
+						]
+					]));
 				}
-				$out->fwrite(']}');
 			} else {
-				fwrite(json_encode($response));
+				$out->fwrite(json_encode($response));
 			}
-
-			if (key($responses) < $last) $out->fwrite(",");
-
+			if ($key < $last) $out->fwrite(",");
 		}
 
 		$out->fwrite("]");
