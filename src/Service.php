@@ -7,6 +7,11 @@ class Service
 
 	private $servicesPath;
 
+	function __construct($servicesPath)
+	{
+		$this->servicesPath = $servicesPath;
+	}
+
 	static public function process($servicesPath)
 	{
 		$service = new Service($servicesPath);
@@ -16,11 +21,6 @@ class Service
 		} else {
 			$service->handlerScriptRequest();
 		}
-	}
-
-	function __construct($servicesPath)
-	{
-		$this->servicesPath = $servicesPath;
 	}
 
 	private function handlerScriptRequest()
@@ -46,32 +46,42 @@ class Service
 				$out->fwrite("};\n");
 			}
 		}
-
 	}
 
 	private function handlerServiceRequest()
 	{
-		$request = json_decode(file_get_contents("php://input"));
-		$request = is_object($request) ? [$request] : $request;
-		if ($post = empty($request)) {
+		$requests = @json_decode(file_get_contents("php://input"));
+		// If we have REST request
+		if (empty($_SERVER['HTTP_X_JSONRPC'])) {
 			$path = explode("/", trim($_SERVER['REQUEST_URI'], "/"));
-			$method = array_pop($path);
-			$service = array_pop($path);
-			parse_str($_SERVER['QUERY_STRING'], $arguments);
-			$request = [(object)[
+			list($service, $method) = array_slice($path, -2);
+
+			$arguments = [];
+			if (!empty($_SERVER['QUERY_STRING'])) {
+				parse_str($_SERVER['QUERY_STRING'], $arguments);
+			} else {
+				$arguments = $requests;
+			}
+
+			$requests = [(object)[
 				"id" => -1,
 				"service" => $service,
 				"method" => $method,
-				"arguments" => array_values($arguments)
+				"arguments" => $arguments ? array_values($arguments) : []
 			]];
+		} else {
+			$requests = is_object($requests) ? [$requests] : $requests;
 		}
+
 		$response = [];
-		foreach ($request as $call) {
+		foreach ($requests as $call) {
 			/** @var Request $call */
 			try {
-				$self = new $call->{"service"}();
-				$result = call_user_func_array([$self, $call->method], $call->arguments);
-				$response[] = (object)["result" => $result, "id" => $call->id];
+				$response[] = $this->handleError(function () use (&$call) {
+					$self = new $call->{"service"}();
+					$result = call_user_func_array([$self, $call->method], $call->arguments);
+					return (object)["result" => $result, "id" => $call->id];
+				});
 			} catch (Exception $e) {
 				$response[] = (object)[
 					"id" => $call->id,
@@ -107,6 +117,8 @@ class Service
 						$data->next();
 					}
 					$out->fwrite(']');
+				} else {
+					$out->fwrite('[]');
 				}
 			} catch (\ErrorException $e) {
 				$out->fwrite(json_encode([
@@ -121,6 +133,43 @@ class Service
 			$out->fwrite(json_encode($data));
 		}
 
+	}
+
+	/**
+	 * Undocumented function
+	 *
+	 * @param callable $callback
+	 * @return mixed
+	 */
+	protected function handleError($callback)
+	{
+		$error = [];
+		$oldHandler = set_error_handler(function ($err_severity, $err_msg, $err_file, $err_line) use (&$error) {
+			if (0 === error_reporting()) {
+				return false;
+			}
+			$error['type'] = $err_severity;
+			$error['message'] = $err_msg;
+			$error['file'] = $err_file;
+			$error['line'] = $err_line;
+			return true;
+		});
+
+		$result = $callback();
+
+		set_error_handler($oldHandler);
+		if (!empty($error)) {
+			// $msg = "%s\nSQL: %s\nParams: %s\n";
+			throw new \ErrorException(
+				// sprintf($msg, $err['message'], $query, json_encode($params)),
+				$error['message'],
+				$error['type'],
+				$error['type'],
+				$error['file'],
+				$error['line']
+			);
+		}
+		return $result;
 	}
 
 	/**
@@ -204,6 +253,7 @@ var Service = (function () {
 			var xhr = new XMLHttpRequest();
 			xhr.open("POST", _requestUri, true);
 			xhr.setRequestHeader("Content-type", "application/json");
+			xhr.setRequestHeader("X-JSONRPC", "V2");
 			xhr.onreadystatechange = function () {
 				try {
 					if (xhr.readyState == 4) {
@@ -238,9 +288,14 @@ var Service = (function () {
 			params[_i] = arguments[_i];
 		}
 		return new Promise(function (resolve, reject) {
-			var service = params.shift(), method = params.shift(), cb = typeof params[params.length - 1] == 'function' ? params.pop() : function () { }, id = _this.i++, callback = function (result, error) {
-				error ? reject(error) : resolve(result), cb(result, error);
-			};
+			var
+				service = params.shift(),
+				method = params.shift(),
+				cb = typeof params[params.length - 1] == 'function' ? params.pop() : function () { },
+				id = _this.i++,
+				callback = function (result, error) {
+					error ? reject(error) : resolve(result), cb(result, error);
+				};
 			_this.q[id] = {
 				id: id,
 				data: {
