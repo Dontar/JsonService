@@ -52,7 +52,7 @@ class Service
 	{
 		$requests = @json_decode(file_get_contents("php://input"));
 		// If we have REST request
-		if (empty($_SERVER['HTTP_X_JSONRPC'])) {
+		if ($post = empty($_SERVER['HTTP_X_JSONRPC'])) {
 			$path = explode("/", trim($_SERVER['REQUEST_URI'], "/"));
 			list($service, $method) = array_slice($path, -2);
 
@@ -109,17 +109,19 @@ class Service
 
 		if ($data instanceof \Generator) {
 			try {
-				if ($data->valid()) {
-					$out->fwrite('[' . json_encode($data->current()));
-					$data->next();
-					while ($data->valid()) {
-						$out->fwrite(',' . json_encode($data->current()));
+				$this->handleError(function () use (&$data, &$out) {
+					if ($data->valid()) {
+						$out->fwrite('[' . json_encode($data->current()));
 						$data->next();
+						while ($data->valid()) {
+							$out->fwrite(',' . json_encode($data->current()));
+							$data->next();
+						}
+						$out->fwrite(']');
+					} else {
+						$out->fwrite('[]');
 					}
-					$out->fwrite(']');
-				} else {
-					$out->fwrite('[]');
-				}
+				});
 			} catch (\ErrorException $e) {
 				$out->fwrite(json_encode([
 					"error" => [
@@ -190,15 +192,17 @@ class Service
 
 			if ($data instanceof \Generator) {
 				try {
-					if ($data->valid()) {
-						$out->fwrite(sprintf('{"id": %s, "result": [', $response->id) . json_encode($data->current()));
-						$data->next();
-						while ($data->valid()) {
-							$out->fwrite(',' . json_encode($data->current()));
+					$this->handleError(function () use (&$data, &$out, &$response) {
+						if ($data->valid()) {
+							$out->fwrite(sprintf('{"id": %s, "result": [', $response->id) . json_encode($data->current()));
 							$data->next();
+							while ($data->valid()) {
+								$out->fwrite(',' . json_encode($data->current()));
+								$data->next();
+							}
+							$out->fwrite(']}');
 						}
-						$out->fwrite(']}');
-					}
+					});
 				} catch (\ErrorException $e) {
 					$out->fwrite(json_encode([
 						"id" => $response->id,
