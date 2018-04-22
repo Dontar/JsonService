@@ -146,7 +146,7 @@ class Service
 	protected function handleError($callback)
 	{
 		$error = [];
-		$oldHandler = set_error_handler(function ($err_severity, $err_msg, $err_file, $err_line) use (&$error) {
+		set_error_handler(function ($err_severity, $err_msg, $err_file, $err_line) use (&$error) {
 			if (0 === error_reporting()) {
 				return false;
 			}
@@ -159,7 +159,7 @@ class Service
 
 		$result = $callback();
 
-		set_error_handler($oldHandler);
+		restore_error_handler();
 		if (!empty($error)) {
 			// $msg = "%s\nSQL: %s\nParams: %s\n";
 			throw new \ErrorException(
